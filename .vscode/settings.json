@@ -1,3 +1,8 @@
 {
-    "cmake.sourceDirectory": "D:/jokiab/mitraGlobal/kasir_offline/linux"
+  "cmake.sourceDirectory": "D:/jokiab/mitraGlobal/kasir_offline/linux",
+  "builder.serverUrl": "http://127.0.0.1:17097",
+  "builder.command": "flutter run",
+  "builder.runDevServer": true,
+  "builder.autoDetectDevServer": false,
+  "builder.launchType": "editor"
 }

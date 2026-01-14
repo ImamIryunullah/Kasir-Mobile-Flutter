@@ -1,11 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-
-void main() {
-  runApp(
-    const MaterialApp(home: KasirPage(), debugShowCheckedModeBanner: false),
-  );
-}
+import '../models/barang.dart';
+import '../repositories/barang_repository.dart';
 
 class KasirPage extends StatefulWidget {
   const KasirPage({super.key});
@@ -15,13 +11,12 @@ class KasirPage extends StatefulWidget {
 }
 
 class _KasirPageState extends State<KasirPage> {
-  final List<Map<String, dynamic>> items = [
-    {"nama": "Mesin Canon iR2525", "harga": 15500000, "qty": 0, "cat": "Mesin"},
-    {"nama": "Toner NPG-51", "harga": 250000, "qty": 0, "cat": "Sparepart"},
-    {"nama": "Drum Unit", "harga": 850000, "qty": 0, "cat": "Sparepart"},
-    {"nama": "Heating Roller", "harga": 320000, "qty": 0, "cat": "Sparepart"},
-    {"nama": "Kertas A4 80gr", "harga": 55000, "qty": 0, "cat": "Kertas"},
-  ];
+  final BarangRepository repo = BarangRepository();
+  final TextEditingController searchCtrl = TextEditingController();
+
+  List<Barang> allBarang = [];
+  List<Barang> filteredBarang = [];
+  Map<int, int> cartQty = {}; // id barang -> quantity di keranjang
 
   final currencyFormatter = NumberFormat.currency(
     locale: 'id',
@@ -29,15 +24,105 @@ class _KasirPageState extends State<KasirPage> {
     decimalDigits: 0,
   );
 
-  int get totalHarga =>
-      items.fold(0, (sum, item) => sum + (item["harga"] * item["qty"] as int));
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
 
-  void updateQty(int index, int delta) {
+  Future<void> _loadData() async {
+    final data = await repo.getAllBarang();
     setState(() {
-      if (items[index]["qty"] + delta >= 0) {
-        items[index]["qty"] += delta;
+      allBarang = data;
+      filteredBarang = data;
+    });
+  }
+
+  void _search(String keyword) {
+    setState(() {
+      if (keyword.isEmpty) {
+        filteredBarang = allBarang;
+      } else {
+        filteredBarang = allBarang
+            .where(
+              (b) =>
+                  b.nama.toLowerCase().contains(keyword.toLowerCase()) ||
+                  b.kategori.toLowerCase().contains(keyword.toLowerCase()),
+            )
+            .toList();
       }
     });
+  }
+
+  int get totalHarga {
+    int total = 0;
+    for (var barang in allBarang) {
+      if (cartQty.containsKey(barang.id)) {
+        total += barang.harga * cartQty[barang.id!]!;
+      }
+    }
+    return total;
+  }
+
+  int getCartQty(int? id) {
+    if (id == null) return 0;
+    return cartQty[id] ?? 0;
+  }
+
+  void updateQty(Barang barang, int delta) {
+    setState(() {
+      int currentQty = getCartQty(barang.id);
+      int newQty = currentQty + delta;
+
+      // Cek stok tersedia
+      if (newQty > barang.stok) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Stok ${barang.nama} tidak mencukupi!'),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+        return;
+      }
+
+      if (newQty <= 0) {
+        cartQty.remove(barang.id);
+      } else {
+        cartQty[barang.id!] = newQty;
+      }
+    });
+  }
+
+  Future<void> _processCheckout() async {
+    if (cartQty.isEmpty) return;
+
+    // Update stok di database
+    for (var entry in cartQty.entries) {
+      int barangId = entry.key;
+      int qtyDibeli = entry.value;
+
+      Barang? barang = allBarang.firstWhere((b) => b.id == barangId);
+
+      // Kurangi stok
+      await repo.updateBarang(
+        Barang(
+          id: barang.id,
+          nama: barang.nama,
+          harga: barang.harga,
+          stok: barang.stok - qtyDibeli,
+          kategori: barang.kategori,
+        ),
+      );
+    }
+
+    // Reset keranjang
+    setState(() {
+      cartQty.clear();
+    });
+
+    // Reload data untuk update tampilan
+    await _loadData();
   }
 
   void showCheckoutSheet() {
@@ -47,17 +132,18 @@ class _KasirPageState extends State<KasirPage> {
       backgroundColor: Colors.transparent,
       builder: (context) => CheckoutSheet(
         total: totalHarga,
-        onSuccess: () {
-          setState(() {
-            for (var item in items) {
-              item["qty"] = 0;
-            }
-          });
-          Navigator.pop(context);
-
-          ScaffoldMessenger.of(
-            context,
-          ).showSnackBar(const SnackBar(content: Text("Transaksi Berhasil!")));
+        onSuccess: () async {
+          await _processCheckout();
+          if (mounted) {
+            Navigator.pop(context);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text("Transaksi Berhasil!"),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
         },
       ),
     );
@@ -78,78 +164,125 @@ class _KasirPageState extends State<KasirPage> {
       ),
       body: Column(
         children: [
+          // Search Bar
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: TextField(
+              controller: searchCtrl,
+              onChanged: _search,
+              decoration: InputDecoration(
+                hintText: 'Cari barang...',
+                prefixIcon: const Icon(Icons.search),
+                filled: true,
+                fillColor: Colors.grey[50],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                  borderSide: BorderSide(color: Colors.grey[300]!),
+                ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
+              ),
+            ),
+          ),
+
           Expanded(
-            child: ListView.builder(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: items.length,
-              itemBuilder: (context, index) {
-                final item = items[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.grey[50],
-                    borderRadius: BorderRadius.circular(15),
-                    border: Border.all(color: Colors.grey[200]!),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 50,
-                        height: 50,
+            child: filteredBarang.isEmpty
+                ? const Center(
+                    child: Text(
+                      'Tidak ada barang ditemukan',
+                      style: TextStyle(color: Colors.grey),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: filteredBarang.length,
+                    itemBuilder: (context, index) {
+                      final barang = filteredBarang[index];
+                      final qtyInCart = getCartQty(barang.id);
+                      final stokTersedia = barang.stok - qtyInCart;
+
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
-                          color: Colors.blue[50],
-                          borderRadius: BorderRadius.circular(10),
+                          color: Colors.grey[50],
+                          borderRadius: BorderRadius.circular(15),
+                          border: Border.all(color: Colors.grey[200]!),
                         ),
-                        child: Icon(
-                          Icons.settings_suggest,
-                          color: Colors.blue[700],
-                        ),
-                      ),
-                      const SizedBox(width: 15),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        child: Row(
                           children: [
-                            Text(
-                              item["nama"],
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 15,
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                color: Colors.blue[50],
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Icon(
+                                _getCategoryIcon(barang.kategori),
+                                color: Colors.blue[700],
                               ),
                             ),
-                            Text(
-                              currencyFormatter.format(item["harga"]),
-                              style: TextStyle(
-                                color: Colors.blue[800],
-                                fontSize: 13,
+                            const SizedBox(width: 15),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    barang.nama,
+                                    style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 15,
+                                    ),
+                                  ),
+                                  Text(
+                                    currencyFormatter.format(barang.harga),
+                                    style: TextStyle(
+                                      color: Colors.blue[800],
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Stok: $stokTersedia',
+                                    style: TextStyle(
+                                      color: stokTersedia <= 5
+                                          ? Colors.red
+                                          : Colors.grey[600],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
                               ),
+                            ),
+                            Row(
+                              children: [
+                                _qtyBtn(
+                                  Icons.remove,
+                                  () => updateQty(barang, -1),
+                                  qtyInCart == 0,
+                                ),
+                                SizedBox(
+                                  width: 30,
+                                  child: Center(
+                                    child: Text(
+                                      "$qtyInCart",
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                _qtyBtn(
+                                  Icons.add,
+                                  () => updateQty(barang, 1),
+                                  stokTersedia == 0,
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ),
-                      Row(
-                        children: [
-                          _qtyBtn(Icons.remove, () => updateQty(index, -1)),
-                          SizedBox(
-                            width: 30,
-                            child: Center(
-                              child: Text(
-                                "${item["qty"]}",
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                          _qtyBtn(Icons.add, () => updateQty(index, 1)),
-                        ],
-                      ),
-                    ],
+                      );
+                    },
                   ),
-                );
-              },
-            ),
           ),
           _buildBottomBar(),
         ],
@@ -157,15 +290,29 @@ class _KasirPageState extends State<KasirPage> {
     );
   }
 
-  Widget _qtyBtn(IconData icon, VoidCallback onPressed) {
+  IconData _getCategoryIcon(String kategori) {
+    switch (kategori.toLowerCase()) {
+      case 'mesin':
+        return Icons.settings;
+      case 'sparepart':
+        return Icons.build;
+      case 'kertas':
+        return Icons.description;
+      default:
+        return Icons.shopping_bag;
+    }
+  }
+
+  Widget _qtyBtn(IconData icon, VoidCallback onPressed, bool disabled) {
     return IconButton(
-      onPressed: onPressed,
+      onPressed: disabled ? null : onPressed,
       icon: Icon(icon, size: 20),
       constraints: const BoxConstraints(),
       padding: const EdgeInsets.all(8),
       style: IconButton.styleFrom(
-        backgroundColor: Colors.white,
+        backgroundColor: disabled ? Colors.grey[200] : Colors.white,
         side: BorderSide(color: Colors.grey[300]!),
+        disabledBackgroundColor: Colors.grey[200],
       ),
     );
   }
@@ -231,7 +378,7 @@ class _KasirPageState extends State<KasirPage> {
   }
 }
 
-// 3. WIDGET CHECKOUT
+// WIDGET CHECKOUT
 class CheckoutSheet extends StatefulWidget {
   final int total;
   final VoidCallback onSuccess;

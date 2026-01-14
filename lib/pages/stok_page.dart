@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../models/barang.dart';
+import '../repositories/barang_repository.dart';
 
 class StokBarangPage extends StatefulWidget {
   const StokBarangPage({super.key});
@@ -9,20 +11,10 @@ class StokBarangPage extends StatefulWidget {
 }
 
 class _StokBarangPageState extends State<StokBarangPage> {
-  // ================= DATA =================
-  final List<Map<String, dynamic>> stokItems = [
-    {
-      "nama": "Mesin Canon iR2525",
-      "harga": 15500000,
-      "stok": 5,
-      "cat": "Mesin",
-    },
-    {"nama": "Toner NPG-51", "harga": 250000, "stok": 50, "cat": "Sparepart"},
-    {"nama": "Drum Unit", "harga": 850000, "stok": 12, "cat": "Sparepart"},
-  ];
-
+  final BarangRepository repo = BarangRepository();
   final TextEditingController searchCtrl = TextEditingController();
-  String keyword = "";
+
+  List<Barang> items = [];
 
   final fmt = NumberFormat.currency(
     locale: 'id',
@@ -30,204 +22,239 @@ class _StokBarangPageState extends State<StokBarangPage> {
     decimalDigits: 0,
   );
 
-  // ================= FILTER =================
-  List<Map<String, dynamic>> get filteredItems {
-    if (keyword.isEmpty) return stokItems;
-    return stokItems.where((item) {
-      final text = "${item['nama']} ${item['cat']}".toLowerCase();
-      return text.contains(keyword.toLowerCase());
-    }).toList();
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
   }
 
-  // ================= CRUD =================
-  void _tambahBarang(String nama, int harga, int stok) {
-    setState(() {
-      stokItems.add({
-        "nama": nama,
-        "harga": harga,
-        "stok": stok,
-        "cat": "Umum",
-      });
-    });
+  Future<void> _loadData() async {
+    final data = await repo.getAllBarang();
+    setState(() => items = data);
   }
 
-  void _editBarang(int index, String nama, int harga, int stok) {
-    setState(() {
-      stokItems[index] = {
-        "nama": nama,
-        "harga": harga,
-        "stok": stok,
-        "cat": stokItems[index]["cat"],
-      };
-    });
+  Future<void> _search(String keyword) async {
+    if (keyword.isEmpty) {
+      _loadData();
+    } else {
+      final result = await repo.searchBarang(keyword);
+      setState(() => items = result);
+    }
   }
 
-  void _hapusBarang(int index) {
-    setState(() {
-      stokItems.removeAt(index);
-    });
+  // --- FUNGSI KONFIRMASI HAPUS ---
+  Future<bool> _confirmDelete(BuildContext context, String namaBarang) async {
+    return await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: const Text('Hapus Barang?'),
+            content: Text(
+              'Apakah Anda yakin ingin menghapus "$namaBarang" dari stok?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text(
+                  'Batal',
+                  style: TextStyle(color: Colors.grey),
+                ),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                ),
+                child: const Text('Hapus'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
   }
 
-  // ================= FORM =================
-  void _showFormDialog({int? index}) {
-    final isEdit = index != null;
-    final item = isEdit ? stokItems[index] : null;
-
-    final nameCtrl = TextEditingController(text: item?["nama"] ?? "");
+  Future<void> _showForm({Barang? barang}) async {
+    final nameCtrl = TextEditingController(text: barang?.nama ?? '');
     final hargaCtrl = TextEditingController(
-      text: item?["harga"]?.toString() ?? "",
+      text: barang?.harga.toString() ?? '',
     );
-    final stokCtrl = TextEditingController(
-      text: item?["stok"]?.toString() ?? "",
-    );
+    final stokCtrl = TextEditingController(text: barang?.stok.toString() ?? '');
 
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(isEdit ? "Edit Barang" : "Tambah Barang"),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: nameCtrl,
-              decoration: const InputDecoration(labelText: "Nama Barang"),
-            ),
-            TextField(
-              controller: hargaCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: "Harga"),
-            ),
-            TextField(
-              controller: stokCtrl,
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: "Jumlah Stok"),
-            ),
-          ],
+        title: Text(barang == null ? 'Tambah Barang' : 'Edit Barang'),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameCtrl,
+                decoration: const InputDecoration(labelText: 'Nama Barang'),
+              ),
+              TextField(
+                controller: hargaCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(
+                  labelText: 'Harga',
+                  prefixText: 'Rp ',
+                ),
+              ),
+              TextField(
+                controller: stokCtrl,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Stok'),
+              ),
+            ],
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text("Batal"),
+            child: const Text('Batal'),
           ),
           ElevatedButton(
-            onPressed: () {
+            onPressed: () async {
               final harga = int.tryParse(hargaCtrl.text);
               final stok = int.tryParse(stokCtrl.text);
-              if (harga == null || stok == null) return;
+              if (harga == null || stok == null || nameCtrl.text.isEmpty)
+                return;
 
-              if (isEdit) {
-                _editBarang(index!, nameCtrl.text, harga, stok);
+              if (barang == null) {
+                await repo.insertBarang(
+                  Barang(
+                    nama: nameCtrl.text,
+                    harga: harga,
+                    stok: stok,
+                    kategori: 'Umum',
+                  ),
+                );
               } else {
-                _tambahBarang(nameCtrl.text, harga, stok);
+                await repo.updateBarang(
+                  Barang(
+                    id: barang.id,
+                    nama: nameCtrl.text,
+                    harga: harga,
+                    stok: stok,
+                    kategori: barang.kategori,
+                  ),
+                );
               }
-              Navigator.pop(context);
+
+              if (mounted) Navigator.pop(context);
+              _loadData();
             },
-            child: const Text("Simpan"),
+            child: const Text('Simpan'),
           ),
         ],
       ),
     );
   }
 
-  // ================= UI =================
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey[50],
-      appBar: AppBar(title: const Text("Stok Barang"), centerTitle: true),
+      appBar: AppBar(
+        title: const Text(
+          'Stok Barang',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 0,
+      ),
       body: Column(
         children: [
-          // SEARCH BAR
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+            padding: const EdgeInsets.all(16),
             child: TextField(
               controller: searchCtrl,
-              onChanged: (val) {
-                setState(() => keyword = val);
-              },
+              onChanged: _search,
               decoration: InputDecoration(
-                hintText: "Cari barang atau kategori...",
+                hintText: 'Cari barang...',
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
                 fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(vertical: 14),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(15),
                   borderSide: BorderSide.none,
                 ),
+                contentPadding: const EdgeInsets.symmetric(vertical: 0),
               ),
             ),
           ),
-
-          // LIST
           Expanded(
-            child: filteredItems.isEmpty
-                ? const Center(
-                    child: Text(
-                      "Barang tidak ditemukan",
-                      style: TextStyle(color: Colors.grey),
-                    ),
-                  )
+            child: items.isEmpty
+                ? const Center(child: Text('Data tidak ditemukan'))
                 : ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: filteredItems.length,
-                    itemBuilder: (context, index) {
-                      final item = filteredItems[index];
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: items.length,
+                    itemBuilder: (context, i) {
+                      final b = items[i];
                       return Card(
                         margin: const EdgeInsets.only(bottom: 12),
+                        elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(15),
+                          side: BorderSide(color: Colors.grey[200]!),
                         ),
                         child: ListTile(
-                          contentPadding: const EdgeInsets.all(15),
-                          leading: Container(
-                            padding: const EdgeInsets.all(10),
-                            decoration: BoxDecoration(
-                              color: Colors.blue[50],
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: const Icon(
-                              Icons.inventory_2,
-                              color: Colors.blue,
-                            ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 4,
                           ),
                           title: Text(
-                            item["nama"],
+                            b.nama,
                             style: const TextStyle(fontWeight: FontWeight.bold),
                           ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const SizedBox(height: 6),
-                              Text(
-                                fmt.format(item["harga"]),
-                                style: TextStyle(color: Colors.blue[800]),
-                              ),
-                              Text("Stok: ${item["stok"]}"),
-                            ],
+                          subtitle: Text(
+                            '${fmt.format(b.harga)} • Stok: ${b.stok}',
+                            style: TextStyle(color: Colors.grey[600]),
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               IconButton(
                                 icon: const Icon(
-                                  Icons.edit,
+                                  Icons.edit_outlined,
                                   color: Colors.orange,
                                 ),
-                                onPressed: () => _showFormDialog(
-                                  index: stokItems.indexOf(item),
-                                ),
+                                onPressed: () => _showForm(barang: b),
                               ),
                               IconButton(
                                 icon: const Icon(
-                                  Icons.delete,
+                                  Icons.delete_outline,
                                   color: Colors.red,
                                 ),
-                                onPressed: () {
-                                  setState(() {
-                                    stokItems.remove(item);
-                                  });
+                                onPressed: () async {
+                                  // EKSEKUSI KONFIRMASI
+                                  bool yakin = await _confirmDelete(
+                                    context,
+                                    b.nama,
+                                  );
+                                  if (yakin) {
+                                    await repo.deleteBarang(b.id!);
+                                    _loadData();
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text('${b.nama} dihapus'),
+                                          behavior: SnackBarBehavior.floating,
+                                        ),
+                                      );
+                                    }
+                                  }
                                 },
                               ),
                             ],
@@ -240,9 +267,13 @@ class _StokBarangPageState extends State<StokBarangPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _showFormDialog(),
-        icon: const Icon(Icons.add),
-        label: const Text("Tambah Barang"),
+        onPressed: () => _showForm(),
+        backgroundColor: Colors.blue[800],
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          'Tambah Barang',
+          style: TextStyle(color: Colors.white),
+        ),
       ),
     );
   }

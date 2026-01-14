@@ -1,24 +1,21 @@
-import 'package:sqflite/sqflite.dart';
 import '../database/db_helper.dart';
 import '../models/barang.dart';
 
 class BarangRepository {
-  final dbHelper = DBHelper.instance;
-
   Future<List<Barang>> getAllBarang() async {
-    final db = await dbHelper.database;
-    final result = await db.query('barang', orderBy: 'nama ASC');
+    final db = await DBHelper.database;
+    final result = await db.query('barang', orderBy: 'id DESC');
     return result.map((e) => Barang.fromMap(e)).toList();
   }
 
-  Future<int> insertBarang(Barang barang) async {
-    final db = await dbHelper.database;
-    return await db.insert('barang', barang.toMap());
+  Future<void> insertBarang(Barang barang) async {
+    final db = await DBHelper.database;
+    await db.insert('barang', barang.toMap());
   }
 
-  Future<int> updateBarang(Barang barang) async {
-    final db = await dbHelper.database;
-    return await db.update(
+  Future<void> updateBarang(Barang barang) async {
+    final db = await DBHelper.database;
+    await db.update(
       'barang',
       barang.toMap(),
       where: 'id = ?',
@@ -26,17 +23,17 @@ class BarangRepository {
     );
   }
 
-  Future<int> deleteBarang(int id) async {
-    final db = await dbHelper.database;
-    return await db.delete('barang', where: 'id = ?', whereArgs: [id]);
+  Future<void> deleteBarang(int id) async {
+    final db = await DBHelper.database;
+    await db.delete('barang', where: 'id = ?', whereArgs: [id]);
   }
 
   Future<List<Barang>> searchBarang(String keyword) async {
-    final db = await dbHelper.database;
+    final db = await DBHelper.database;
     final result = await db.query(
       'barang',
-      where: 'nama LIKE ?',
-      whereArgs: ['%$keyword%'],
+      where: 'nama LIKE ? OR kategori LIKE ?',
+      whereArgs: ['%$keyword%', '%$keyword%'],
     );
     return result.map((e) => Barang.fromMap(e)).toList();
   }
