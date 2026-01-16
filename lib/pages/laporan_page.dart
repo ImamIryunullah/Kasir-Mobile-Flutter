@@ -9,6 +9,11 @@ class LaporanPage extends StatefulWidget {
 }
 
 class _LaporanPageState extends State<LaporanPage> {
+  // Tema Warna Konsisten
+  static const Color primaryNavy = Color(0xFF2C3E50);
+  static const Color accentBlue = Color(0xFF34495E);
+  static const Color backgroundLight = Color(0xFFF8FAFC);
+
   DateTime selectedDate = DateTime.now();
   final fmt = NumberFormat.currency(
     locale: 'id',
@@ -16,7 +21,6 @@ class _LaporanPageState extends State<LaporanPage> {
     decimalDigits: 0,
   );
 
-  // Data Dummy yang lebih variatif
   final List<Map<String, dynamic>> transaksi = [
     {
       "tanggal": DateTime.now(),
@@ -62,7 +66,7 @@ class _LaporanPageState extends State<LaporanPage> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(primary: Colors.blue[800]!),
+            colorScheme: const ColorScheme.light(primary: primaryNavy),
           ),
           child: child!,
         );
@@ -74,33 +78,48 @@ class _LaporanPageState extends State<LaporanPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F9FA),
+      backgroundColor: backgroundLight,
       appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0.5,
+        leading: IconButton(
+          icon: const Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: primaryNavy,
+            size: 20,
+          ),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           "Laporan Keuangan",
-          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87),
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: primaryNavy,
+            fontSize: 18,
+          ),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
-        elevation: 0,
-        iconTheme: const IconThemeData(color: Colors.black87),
       ),
       body: Column(
         children: [
           _buildHeaderPilihTanggal(),
           Expanded(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
+              padding: const EdgeInsets.all(24),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildMainSummaryCard(),
-                  const SizedBox(height: 25),
+                  const SizedBox(height: 32),
                   const Text(
-                    "Detail Transaksi",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    "Riwayat Transaksi",
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: primaryNavy,
+                    ),
                   ),
-                  const SizedBox(height: 15),
+                  const SizedBox(height: 16),
                   _buildTransactionList(),
                 ],
               ),
@@ -113,35 +132,42 @@ class _LaporanPageState extends State<LaporanPage> {
 
   Widget _buildHeaderPilihTanggal() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       color: Colors.white,
       child: InkWell(
         onTap: pilihTanggal,
+        borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           decoration: BoxDecoration(
-            color: Colors.blue[50],
+            color: backgroundLight,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: Colors.blue[100]!),
+            border: Border.all(color: Colors.grey.withOpacity(0.2)),
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(
-                Icons.calendar_month_rounded,
-                color: Colors.blue[800],
-                size: 20,
+              Row(
+                children: [
+                  const Icon(
+                    Icons.calendar_today_rounded,
+                    color: primaryNavy,
+                    size: 18,
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    DateFormat(
+                      'EEEE, dd MMM yyyy',
+                      'id_ID',
+                    ).format(selectedDate),
+                    style: const TextStyle(
+                      color: primaryNavy,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(width: 10),
-              Text(
-                DateFormat('EEEE, dd MMMM yyyy', 'id_ID').format(selectedDate),
-                style: TextStyle(
-                  color: Colors.blue[800],
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Icon(Icons.arrow_drop_down, color: Colors.blue[800]),
+              const Icon(Icons.keyboard_arrow_down_rounded, color: primaryNavy),
             ],
           ),
         ),
@@ -152,48 +178,69 @@ class _LaporanPageState extends State<LaporanPage> {
   Widget _buildMainSummaryCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(25),
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue[900]!, Colors.blue[700]!],
+        borderRadius: BorderRadius.circular(20),
+        gradient: const LinearGradient(
+          colors: [primaryNavy, accentBlue],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.withOpacity(0.3),
+            color: primaryNavy.withOpacity(0.2),
             blurRadius: 15,
             offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Stack(
         children: [
-          const Text(
-            "Total Pendapatan Bersih",
-            style: TextStyle(color: Colors.white70, fontSize: 14),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            fmt.format(totalPendapatan),
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 30,
-              fontWeight: FontWeight.bold,
+          // Gambar Background Ikon
+          Positioned(
+            right: -20,
+            bottom: -20,
+            child: Opacity(
+              opacity: 0.1,
+              child: Icon(
+                Icons.analytics_outlined,
+                size: 160,
+                color: Colors.white,
+              ),
             ),
           ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              _miniStat(
-                Icons.shopping_bag_outlined,
-                "${transaksiTerpilih.length} Item",
-              ),
-              const SizedBox(width: 15),
-              _miniStat(Icons.trending_up, "+12.5%"),
-            ],
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  "Total Pendapatan",
+                  style: TextStyle(color: Colors.white70, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  fmt.format(totalPendapatan),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    _miniStat(
+                      Icons.receipt_long_outlined,
+                      "${transaksiTerpilih.length} Transaksi",
+                    ),
+                    const SizedBox(width: 12),
+                    _miniStat(Icons.insights_rounded, "Stabil"),
+                  ],
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -204,16 +251,20 @@ class _LaporanPageState extends State<LaporanPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.15),
-        borderRadius: BorderRadius.circular(30),
+        color: Colors.white.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
         children: [
-          Icon(icon, color: Colors.white, size: 14),
-          const SizedBox(width: 6),
+          Icon(icon, color: Colors.white70, size: 14),
+          const SizedBox(width: 8),
           Text(
             label,
-            style: const TextStyle(color: Colors.white, fontSize: 12),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -225,16 +276,12 @@ class _LaporanPageState extends State<LaporanPage> {
       return Center(
         child: Column(
           children: [
-            const SizedBox(height: 50),
-            Icon(
-              Icons.receipt_long_outlined,
-              size: 80,
-              color: Colors.grey[300],
-            ),
-            const SizedBox(height: 10),
+            const SizedBox(height: 40),
+            Icon(Icons.notes_rounded, size: 64, color: Colors.grey[300]),
+            const SizedBox(height: 16),
             Text(
-              "Tidak ada transaksi hari ini",
-              style: TextStyle(color: Colors.grey[500]),
+              "Tidak ada data transaksi",
+              style: TextStyle(color: Colors.grey[500], fontSize: 14),
             ),
           ],
         ),
@@ -251,44 +298,56 @@ class _LaporanPageState extends State<LaporanPage> {
 
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.all(12),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: Colors.grey[200]!),
+            border: Border.all(color: Colors.grey.withOpacity(0.1)),
           ),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 5,
-            ),
-            leading: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: isJasa ? Colors.orange[50] : Colors.green[50],
-                borderRadius: BorderRadius.circular(12),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: isJasa ? Colors.amber.shade50 : Colors.teal.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  isJasa ? Icons.handyman_outlined : Icons.inventory_2_outlined,
+                  color: isJasa ? Colors.amber.shade800 : Colors.teal.shade800,
+                  size: 20,
+                ),
               ),
-              child: Icon(
-                isJasa
-                    ? Icons.settings_suggest_rounded
-                    : Icons.inventory_2_rounded,
-                color: isJasa ? Colors.orange : Colors.green,
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      t["judul"],
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: primaryNavy,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      t["tipe"],
+                      style: TextStyle(color: Colors.grey[500], fontSize: 11),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            title: Text(
-              t["judul"],
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
-            ),
-            subtitle: Text(
-              t["tipe"],
-              style: TextStyle(color: Colors.grey[600], fontSize: 12),
-            ),
-            trailing: Text(
-              fmt.format(t["total"]),
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.blueAccent,
+              Text(
+                fmt.format(t["total"]),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: primaryNavy,
+                  fontSize: 14,
+                ),
               ),
-            ),
+            ],
           ),
         );
       },

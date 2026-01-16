@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:kasir_offline/pages/notification_page.dart';
 import 'kasir_page.dart';
 import 'laporan_page.dart';
 import 'services_page.dart';
@@ -7,6 +8,11 @@ import 'stok_page.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
+
+  // Tema Warna Konsisten
+  static const Color primaryNavy = Color(0xFF2C3E50);
+  static const Color accentBlue = Color(0xFF34495E);
+  static const Color backgroundLight = Color(0xFFF8FAFC);
 
   @override
   Widget build(BuildContext context) {
@@ -16,52 +22,82 @@ class HomePage extends StatelessWidget {
     ).format(DateTime.now());
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF4F6F8),
+      backgroundColor: backgroundLight,
       appBar: AppBar(
         backgroundColor: Colors.white,
-        elevation: 0,
-        titleSpacing: 20,
+        elevation: 0.5,
+        centerTitle: false,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: const [
             Text(
-              'Mitra Global',
+              'MITRA GLOBAL',
               style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: Colors.black87,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.2,
+                fontSize: 18,
+                color: primaryNavy,
               ),
             ),
             Text(
-              'Dashboard Kasir',
-              style: TextStyle(fontSize: 12, color: Colors.grey),
+              'Sistem Manajemen Kasir',
+              style: TextStyle(
+                fontSize: 11,
+                color: Colors.grey,
+                fontWeight: FontWeight.w400,
+              ),
             ),
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_none, color: Colors.black54),
-            onPressed: () {},
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            decoration: BoxDecoration(
+              color: backgroundLight,
+              shape: BoxShape.circle,
+            ),
+            child: IconButton(
+              icon: const Icon(
+                Icons.notifications_none_rounded,
+                color: primaryNavy,
+              ),
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const NotificationPage()),
+                );
+              },
+            ),
           ),
-          const SizedBox(width: 8),
         ],
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(20, 10, 20, 20),
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ===== HEADER INFO =====
-            Text(today, style: const TextStyle(color: Colors.grey)),
-            const SizedBox(height: 14),
+            Text(
+              today,
+              style: TextStyle(
+                color: accentBlue.withOpacity(0.6),
+                fontWeight: FontWeight.w500,
+                fontSize: 14,
+              ),
+            ),
+            const SizedBox(height: 20),
 
             _buildSummaryCard(),
 
-            const SizedBox(height: 30),
+            const SizedBox(height: 32),
 
-            // ===== MENU =====
             const Text(
-              "Menu Utama",
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              "Layanan Utama",
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: primaryNavy,
+                letterSpacing: 0.5,
+              ),
             ),
             const SizedBox(height: 16),
 
@@ -72,39 +108,35 @@ class HomePage extends StatelessWidget {
                 crossAxisCount: 2,
                 mainAxisSpacing: 16,
                 crossAxisSpacing: 16,
-                childAspectRatio: 1.15,
+                childAspectRatio: 1.1,
               ),
               children: [
                 _menuCard(
                   context,
-                  icon: Icons.point_of_sale,
+                  icon: Icons.point_of_sale_outlined,
                   title: "Kasir",
-                  subtitle: "Catat transaksi",
-                  color: Colors.blue,
+                  subtitle: "Transaksi Baru",
                   page: const KasirPage(),
                 ),
                 _menuCard(
                   context,
-                  icon: Icons.bar_chart_rounded,
+                  icon: Icons.analytics_outlined,
                   title: "Laporan",
-                  subtitle: "Penjualan & laba",
-                  color: Colors.orange,
+                  subtitle: "Analisa Data",
                   page: const LaporanPage(),
                 ),
                 _menuCard(
                   context,
-                  icon: Icons.inventory_2_rounded,
+                  icon: Icons.inventory_2_outlined,
                   title: "Stok",
-                  subtitle: "Barang & toner",
-                  color: Colors.green,
+                  subtitle: "Cek Inventaris",
                   page: const StokBarangPage(),
                 ),
                 _menuCard(
                   context,
-                  icon: Icons.build_circle_rounded,
+                  icon: Icons.settings_suggest_outlined,
                   title: "Service",
-                  subtitle: "Mesin & teknisi",
-                  color: Colors.purple,
+                  subtitle: "Teknisi & Alat",
                   page: const ServicePage(),
                 ),
               ],
@@ -115,93 +147,125 @@ class HomePage extends StatelessWidget {
     );
   }
 
-  // ===================== SUMMARY =====================
+  // ===================== RINGKASAN DATA =====================
   Widget _buildSummaryCard() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        color: primaryNavy,
+        borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
+            color: primaryNavy.withOpacity(0.2),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
           ),
         ],
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [primaryNavy, accentBlue],
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            "Ringkasan Hari Ini",
-            style: TextStyle(fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                "Total Penjualan Hari Ini",
+                style: TextStyle(color: Colors.white70, fontSize: 13),
+              ),
+              Icon(
+                Icons.trending_up,
+                color: Colors.greenAccent.shade100,
+                size: 20,
+              ),
+            ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           const Text(
             "Rp 12.500.000",
             style: TextStyle(
-              fontSize: 28,
+              fontSize: 26,
               fontWeight: FontWeight.bold,
-              color: Colors.green,
+              color: Colors.white,
+              letterSpacing: 1,
             ),
           ),
-          const SizedBox(height: 6),
-          const Text(
-            "45 Transaksi • +12% dari kemarin",
-            style: TextStyle(color: Colors.grey),
+          const SizedBox(height: 20),
+          Divider(color: Colors.white.withOpacity(0.1), thickness: 1),
+          const SizedBox(height: 12),
+          Row(
+            children: const [
+              Icon(
+                Icons.confirmation_number_outlined,
+                color: Colors.white54,
+                size: 16,
+              ),
+              SizedBox(width: 8),
+              Text(
+                "45 Transaksi Terhitung",
+                style: TextStyle(color: Colors.white54, fontSize: 12),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
 
-  // ===================== MENU CARD =====================
+  // ===================== MENU CARD INTERAKTIF =====================
   Widget _menuCard(
     BuildContext context, {
     required IconData icon,
     required String title,
     required String subtitle,
-    required Color color,
     required Widget page,
   }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(20),
-      onTap: () {
-        Navigator.push(context, MaterialPageRoute(builder: (_) => page));
-      },
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 12),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: color.withOpacity(0.12),
-                shape: BoxShape.circle,
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () =>
+            Navigator.push(context, MaterialPageRoute(builder: (_) => page)),
+        child: Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.grey.withOpacity(0.1), width: 1),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: backgroundLight,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: primaryNavy, size: 28),
               ),
-              child: Icon(icon, color: color, size: 26),
-            ),
-            const Spacer(),
-            Text(
-              title,
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              subtitle,
-              style: const TextStyle(color: Colors.grey, fontSize: 12),
-            ),
-          ],
+              const Spacer(),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 15,
+                  color: primaryNavy,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(color: Colors.grey, fontSize: 11),
+              ),
+            ],
+          ),
         ),
       ),
     );
